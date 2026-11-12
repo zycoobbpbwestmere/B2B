@@ -4,6 +4,7 @@ export const B2B_CONFIG = {
   brandShortName: 'Zycoon',
   tagline: 'Bags & Backpacks',
   factoryLocation: 'Shop 2-3, Ground Floor, Mohamedi Manzil, YMCA Road, Agripada, Mumbai Central, Mumbai, Maharashtra 400008',
+  factoryMapPin: 'Zycoon Backpack Bag', // Google Maps pinpoint used by the footer map embed
   yearsInBusiness: '19',
   productionCapacity: '15,000+',
   countriesExported: '35+',

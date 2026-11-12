@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Upload, Trash2, Save, X } from 'lucide-react';
+import { Upload, Trash2, Save, X, GripVertical } from 'lucide-react';
 import { useCategories } from '../../context/ZycoonContext';
 import { uploadProductImage, slugify, newProductShape } from '../../lib/productAdmin';
+import { useDragSort, moveItem } from '../../utils/dragSort';
 
 const inputBase = "w-full bg-ivory border border-border py-2.5 px-4 text-xs font-sans text-ink focus:outline-none focus:border-leather transition-colors duration-300 placeholder-muted";
 
@@ -50,6 +51,8 @@ export default function ProductForm({ product, onSave, onCancel, onDelete, onTog
 
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
 
+  const drag = useDragSort((from, to) => setForm((f) => ({ ...f, images: moveItem(f.images, from, to) })));
+
   const handleName = (name) => {
     const patch = { name };
     if (!form.slug) patch.slug = slugify(name);
@@ -79,25 +82,17 @@ export default function ProductForm({ product, onSave, onCancel, onDelete, onTog
   };
 
   const handleFile = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    
-    console.log('File selected:', file.name, file.size, file.type);
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
     setUploading(true);
     setError('');
-    
+
     try {
-      const url = await uploadProductImage(file, form.slug);
-      console.log('Image URL received:', url?.substring(0, 50) + '...');
-      
-      // Update form state with new image
-      setForm((prev) => {
-        const newImages = [...prev.images.filter(isImageUrl), url];
-        console.log('New images array:', newImages);
-        return { ...prev, images: newImages };
-      });
-      
-      console.log('Image added to form');
+      for (const file of files) {
+        const url = await uploadProductImage(file, form.slug);
+        setForm((prev) => ({ ...prev, images: [...prev.images.filter(isImageUrl), url] }));
+      }
     } catch (err) {
       console.error('Upload failed:', err);
       setError(`Upload failed: ${err?.message || 'Unknown error'}`);
@@ -215,12 +210,22 @@ export default function ProductForm({ product, onSave, onCancel, onDelete, onTog
       {/* Images */}
       <Section title="05 · Images">
         <p className="text-[10px] text-muted leading-relaxed">
-          Upload product photos. First image becomes the card thumbnail.
+          Upload product photos — you can pick several at once. Drag the photos to set their order; the first image becomes the card thumbnail.
         </p>
         <div className="flex flex-wrap gap-3 items-start">
           {form.images.map((img, idx) => (
-            <div key={idx} className="relative group">
+            <div
+              key={idx}
+              {...drag.itemProps(idx)}
+              className={`relative group cursor-grab active:cursor-grabbing select-none transition-[opacity,box-shadow] ${drag.dragging(idx) ? 'opacity-40' : drag.over(idx) ? 'shadow-[0_0_0_2px_rgba(112,72,47,0.5)]' : ''}`}
+            >
               <ImageThumb value={img} />
+              <span className="absolute top-0 left-0 min-w-[14px] h-[14px] px-0.5 bg-ink/80 text-ivory text-[8px] font-mono leading-none flex items-center justify-center z-10">
+                {String(idx + 1).padStart(2, '0')}
+              </span>
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                <GripVertical className="w-4 h-4 text-ivory drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" strokeWidth={1.5} />
+              </div>
               <button
                 onClick={() => set({ images: form.images.filter((_, i) => i !== idx) })}
                 className="absolute -top-1.5 -right-1.5 flex items-center justify-center w-5 h-5 bg-ink text-ivory hover:bg-burgundy transition-colors"
@@ -232,7 +237,7 @@ export default function ProductForm({ product, onSave, onCancel, onDelete, onTog
           ))}
           <label className={`flex items-center justify-center w-12 h-12 border border-dashed border-border text-muted cursor-pointer hover:border-leather hover:text-leather transition-colors ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
             {uploading ? '…' : <Upload className="w-4 h-4" strokeWidth={1.5} />}
-            <input type="file" accept="image/*" className="hidden" onChange={handleFile} />
+            <input type="file" accept="image/*" multiple className="hidden" onChange={handleFile} />
           </label>
         </div>
       </Section>

@@ -11,7 +11,11 @@ function useContentSection(key, emptyText) {
   const [items, setItems] = useState([]);
   const refreshSite = useContentRefresh();
 
-  const load = async () => setItems(await getAllContent(key));
+  const load = async () => {
+    const rows = await getAllContent(key);
+    // Gallery & reels are shown sorted by sort_order on the site — mirror that in the admin list.
+    setItems(key === 'gallery' || key === 'reels' ? [...rows].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)) : rows);
+  };
   useEffect(() => { load(); }, []);
 
   const save = async (item) => { await upsertContent(key, item); await Promise.all([load(), refreshSite()]); };
@@ -136,9 +140,12 @@ export function GalleryAdmin() {
   };
 
   const handleBulkUpload = async (urls) => {
+    // Continue after the highest existing order so the site (sorted by sort_order) shows
+    // newly uploaded photos in the exact order they were arranged in the uploader.
+    const base = Math.max(0, ...items.map((g) => Number(g.sort_order) || 0));
     for (let i = 0; i < urls.length; i++) {
       const url = urls[i];
-      await save({ ...newGalleryItem(), image: url, title: slugify(url.split('/').pop().replace(/\.[^.]+$/, '')).replace(/-/g, ' ') || `Photo ${i + 1}` });
+      await save({ ...newGalleryItem(), sort_order: base + i + 1, image: url, title: slugify(url.split('/').pop().replace(/\.[^.]+$/, '')).replace(/-/g, ' ') || `Photo ${i + 1}` });
     }
   };
 
@@ -232,8 +239,10 @@ export function ReelsAdmin() {
   };
 
   const handleBulkUpload = async (urls) => {
+    // Continue after the highest existing order so videos keep the arranged uploader sequence.
+    const base = Math.max(0, ...items.map((r) => Number(r.sort_order) || 0));
     for (let i = 0; i < urls.length; i++) {
-      await save({ ...newReel(), video_url: urls[i], caption: `Sample Reel ${String(i + 1).padStart(2, '0')}` });
+      await save({ ...newReel(), sort_order: base + i + 1, video_url: urls[i], caption: `Sample Reel ${String(i + 1).padStart(2, '0')}` });
     }
   };
 

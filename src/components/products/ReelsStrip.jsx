@@ -13,7 +13,7 @@ export default function ReelsStrip() {
     let cancelled = false;
     (async () => {
       const data = await getAllContent('reels');
-      if (!cancelled && data && data.length) setReels(data);
+      if (!cancelled && data && data.length) setReels([...data].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)));
     })();
     return () => { cancelled = true; };
   }, []);

@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
-import { Upload, X, CheckCircle2, AlertCircle, ImageOff } from 'lucide-react';
+import { Upload, X, CheckCircle2, AlertCircle, ImageOff, GripVertical } from 'lucide-react';
 import { uploadProductImage, upsertProduct, slugify, newProductShape } from '../../lib/productAdmin';
+import { useDragSort, moveItem } from '../../utils/dragSort';
 
 const IMPORTED_CATEGORY = 'imported';
 
@@ -18,6 +19,7 @@ export default function BulkImportPanel({ onSaved }) {
   const [succeeded, setSucceeded] = useState(null);
   const [errors, setErrors] = useState([]);
   const inputRef = useRef(null);
+  const drag = useDragSort((from, to) => setItems((prev) => moveItem(prev, from, to)));
 
   const pickFiles = (e) => {
     const picked = Array.from(e.target.files || []);
@@ -133,6 +135,11 @@ export default function BulkImportPanel({ onSaved }) {
             Clear selection
           </button>
         )}
+        {items.length > 1 && !busy && (
+          <p className="w-full text-[9px] font-mono uppercase tracking-wider text-muted">
+            Drag tiles to set the processing order — products are created in this sequence
+          </p>
+        )}
       </div>
 
       {/* Progress */}
@@ -174,7 +181,17 @@ export default function BulkImportPanel({ onSaved }) {
       {items.length > 0 && (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
           {items.map((it, idx) => (
-            <div key={`${it.file.name}-${it.file.size}`} className="relative border border-border bg-ivory aspect-[4/5] overflow-hidden group">
+            <div
+              key={`${it.file.name}-${it.file.size}`}
+              {...drag.itemProps(idx)}
+              className={`relative border bg-ivory aspect-[4/5] overflow-hidden group select-none cursor-grab active:cursor-grabbing transition-[opacity,border-color,box-shadow] ${drag.dragging(idx) ? 'opacity-40 border-leather' : drag.over(idx) ? 'border-leather shadow-[0_0_0_2px_rgba(112,72,47,0.35)]' : 'border-border'}`}
+            >
+              <span className="absolute top-1 left-1 min-w-[18px] h-[18px] px-1 bg-ink/80 text-ivory text-[9px] font-mono leading-none flex items-center justify-center z-10">
+                {String(idx + 1).padStart(2, '0')}
+              </span>
+              <div className="absolute top-1 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+                <GripVertical className="w-4 h-4 text-ivory drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" strokeWidth={1.5} />
+              </div>
               <img src={it.preview} alt={it.file.name} className="w-full h-full object-cover" />
               {!busy && (
                 <button
